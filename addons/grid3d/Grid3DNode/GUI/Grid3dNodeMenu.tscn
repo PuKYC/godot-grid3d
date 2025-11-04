@@ -26,6 +26,17 @@ var operation_node:
 			push_error(\"operation_node 必须为 Node3D 类型 或者为 null 类型\")
 var popup :PopupMenu
 
+func show_alert(message: String, title: String = \"提示\"):
+	var alert := AcceptDialog.new()
+	alert.dialog_text = message
+	alert.title = title
+	add_child(alert)
+	alert.popup_centered_ratio(0.3)
+	alert.popup_centered()   
+	# 自动清理
+	alert.confirmed.connect(alert.queue_free)
+	alert.canceled.connect(alert.queue_free)
+
 func popup_centered(window:Window, ratio:float, node:Node3D):
 	window.operation_node = node
 	window._populate_scene_tree()
@@ -52,17 +63,35 @@ func pop_id(id :int):
 		1:
 			popup_centered(select_node, 0.4, operation_node)
 		2:
-			popup_centered(remove_node, 0.4, operation_node)
+			if operation_node._is_path_valid():
+				popup_centered(remove_node, 0.6, operation_node)
+			else :
+				show_alert(\"未设置路径\", \"警告\")
 		3:
-			popup_centered(load_node, 0.4, operation_node)
+			if operation_node._is_path_valid():
+				popup_centered(load_node, 0.6, operation_node)
+			else :
+				show_alert(\"未设置路径\", \"警告\")
 		4:
-			popup_centered(save_node, 0.4, operation_node)
+			if operation_node._is_path_valid():
+				popup_centered(save_node, 0.4, operation_node)
+			else :
+				show_alert(\"未设置路径\", \"警告\")
 
 func _getde_node(node: Node3D):
 	popup_centered(select_signal, 0.4, node)
 
 func _getde_signal(sig_name:String):
 	operation_node.register_node(select_signal.operation_node, null, sig_name)
+
+func _remove_tscn(path: String):
+	operation_node._remove_saved_node(path.get_file().get_basename())
+
+func _load_node(path: String):
+	operation_node.load_node(path.get_file().get_basename())
+
+func _save_node(node: Node3D):
+	operation_node.save_node_to_disk(node)
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
@@ -79,7 +108,7 @@ text = "节点管理"
 item_count = 4
 popup/item_0/text = "添加节点"
 popup/item_0/id = 1
-popup/item_1/text = "删除节点"
+popup/item_1/text = "删除磁盘中保存的节点"
 popup/item_1/id = 2
 popup/item_2/text = "加载节点"
 popup/item_2/id = 3
@@ -92,10 +121,12 @@ script = SubResource("GDScript_bwsu5")
 [node name="select_signal" parent="." instance=ExtResource("2_i71u6")]
 
 [node name="load_node" parent="." instance=ExtResource("3_dkfhj")]
-visible = false
 
 [node name="save_node" parent="." instance=ExtResource("4_ns7ro")]
 
 [node name="remove_node" parent="." instance=ExtResource("5_7h3ft")]
 
 [connection signal="signal_selected" from="select_signal" to="." method="_getde_signal"]
+[connection signal="file_selected" from="load_node" to="." method="_load_node"]
+[connection signal="node_selected" from="save_node" to="." method="_save_node"]
+[connection signal="file_selected" from="remove_node" to="." method="_remove_tscn"]

@@ -3,6 +3,53 @@
 [sub_resource type="GDScript" id="GDScript_22ijm"]
 script/source = "@tool
 extends ConfirmationDialog
+
+var scene_tree: Tree
+var current_selected_node: Node
+var operation_node:
+	set(value):
+		if (value is Grid3DNode) or (value == null):
+			operation_node = value
+		else:
+			push_error(\"operation_node 必须为 Node3D 类型 或者为 null 类型\")
+
+signal node_selected(node: Node3D)
+
+func _ready():
+	#theme =  EditorInterface.get_editor_theme()
+	
+	var vbox = VBoxContainer.new()
+	add_child(vbox)
+	
+	scene_tree = Tree.new()
+	scene_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scene_tree.item_selected.connect(_on_tree_item_selected)
+	vbox.add_child(scene_tree)
+
+func _populate_scene_tree():
+	scene_tree.clear()
+	
+	var root = scene_tree.create_item()
+	root.set_icon(0, EditorInterface.get_base_control().get_theme_icon(operation_node.get_class(), \"EditorIcons\"))
+	root.set_text(0, operation_node.name)
+	root.set_selectable(0, false)
+	root.set_custom_color(0, Color.GRAY)  # 视觉提示
+	
+	_add_tree_items(root, operation_node)
+	
+
+func _add_tree_items(parent: TreeItem, node: Node):
+	
+	for child in node.get_children():
+		var item = scene_tree.create_item(parent)
+		item.set_icon(0, EditorInterface.get_base_control().get_theme_icon(node.get_class(), \"EditorIcons\"))
+		item.set_text(0, node.name)
+		item.set_metadata(0, node)
+
+func _on_tree_item_selected():
+	var selected = scene_tree.get_selected()
+	if selected:
+		current_selected_node = selected.get_metadata(0)
 "
 
 [node name="save_node" type="ConfirmationDialog"]

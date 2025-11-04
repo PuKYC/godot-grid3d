@@ -2,10 +2,8 @@
 
 [sub_resource type="GDScript" id="GDScript_22ijm"]
 script/source = "@tool
-extends ConfirmationDialog
+extends FileDialog
 
-var scene_tree: Tree
-var current_selected_node: Node
 var operation_node:
 	set(value):
 		if (value is Grid3DNode) or (value == null):
@@ -13,46 +11,18 @@ var operation_node:
 		else:
 			push_error(\"operation_node 必须为 Node3D 类型 或者为 null 类型\")
 
-func _ready():
-	#theme =  EditorInterface.get_editor_theme()
-	
-	var vbox = VBoxContainer.new()
-	add_child(vbox)
-	
-	scene_tree = Tree.new()
-	scene_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scene_tree.item_selected.connect(_on_tree_item_selected)
-	vbox.add_child(scene_tree)
-	
-	
-
 func _populate_scene_tree():
-	scene_tree.clear()
-	
-	var root = scene_tree.create_item()
-	root.set_text(0, \"当前场景\")
-	
-	# 递归添加场景树节点
-	_add_tree_items(root, EditorInterface.get_edited_scene_root())
-	
-	
-
-func _add_tree_items(parent: TreeItem, node: Node):
-	var item = scene_tree.create_item(parent)
-	item.set_icon(0, EditorInterface.get_base_control().get_theme_icon(node.get_class(), \"EditorIcons\"))
-	item.set_text(0, node.name)
-	item.set_metadata(0, node)
-	
-	for child in node.get_children():
-		_add_tree_items(item, child)
-
-func _on_tree_item_selected():
-	var selected = scene_tree.get_selected()
-	if selected:
-		current_selected_node = selected.get_metadata(0)
+	root_subfolder = operation_node.node_save_path
 "
 
-[node name="remove_node" type="ConfirmationDialog"]
+[node name="remove_node" type="FileDialog"]
+oversampling_override = 1.0
+title = "Open a File"
+file_mode = 0
+display_mode = 1
+access = 2
+hidden_files_toggle_enabled = false
+folder_creation_enabled = false
+favorites_enabled = false
+layout_toggle_enabled = false
 script = SubResource("GDScript_22ijm")
-
-[connection signal="confirmed" from="." to="." method="_on_select_pressed"]

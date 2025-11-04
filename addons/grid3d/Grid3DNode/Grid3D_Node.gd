@@ -23,6 +23,7 @@ class_name Grid3DNode extends Node3D
 	set(value):
 		node_save_path = value
 		_save_directory = DirAccess.open(node_save_path)
+		update_configuration_warnings()
 
 ## 场景保存文件夹的游标
 var _save_directory: DirAccess
@@ -30,6 +31,9 @@ var _save_directory: DirAccess
 var _node_instance_id_to_storage_id: Dictionary
 ## 存储存储ID与Node3D的实例ID的映射，作为缓存
 var _storage_id_to_node_instance_id: Dictionary
+
+func _is_path_valid():
+	return not (node_save_path == "")
 
 func _ready() -> void:
 	_save_directory = DirAccess.open(node_save_path)
@@ -39,6 +43,9 @@ func _get_configuration_warnings():
 	
 	if grid_partition == null:
 		warnings.append("未设置 grid_partition.")
+	
+	if not _is_path_valid():
+		warnings.append("请设置有效路径")
 	
 	# Returning an empty array means "no warning".
 	return warnings
@@ -148,6 +155,42 @@ func unregister_node(node_3d: Node3D):
 		push_error("未在grid中找到该node")
 
 
+func load_node(storage_id: int):
+	if not _storage_id_to_node_instance_id.has(storage_id):
+		push_error("未在网格中查找到节点")
+		return
+	
+	# 检查节点是否已经存在
+	var instance_id = _storage_id_to_node_instance_id[storage_id]
+	var existing_node := instance_from_id(instance_id)
+	if existing_node and is_instance_valid(existing_node) and existing_node.is_inside_tree():
+		existing_node.queue_free()
+	
+	var file_path = str(storage_id) + ".tscn"
+	if not _save_directory.file_exists(file_path):
+		push_error("节点文件不存在: " + file_path)
+		return
+	
+	var packed_scene = load(file_path)
+	if not packed_scene or not packed_scene is PackedScene:
+		push_error("无法加载场景资源: " + file_path)
+		return
+	
+	var instance = packed_scene.instantiate()
+	if not instance or not instance is Node3D:
+		push_error("实例化的节点不是 Node3D 类型: " + file_path)
+		if instance:
+			instance.free()
+		return
+	
+	add_child(instance)
+	
+	# 重新连接信号
+	if node_signal_map.has(storage_id):
+		var signal_name = node_signal_map[storage_id]
+		if instance.has_signal(signal_name):
+			instance.connect(signal_name, _on_node_updated.bind(instance))
+
 ## 加载指定区域内的节点
 ##
 ## 根据AABB区域查询需要加载的节点，并从磁盘加载对应的场景文件
@@ -165,39 +208,8 @@ func load_nodes_in_area(bounds: AABB):
 		return
 	
 	for storage_id in storage_ids:
-		if not _storage_id_to_node_instance_id.has(storage_id):
-			continue
-		
-		# 检查节点是否已经存在
-		var instance_id = _storage_id_to_node_instance_id[storage_id]
-		var existing_node = instance_from_id(instance_id)
-		if existing_node and is_instance_valid(existing_node) and existing_node.is_inside_tree():
-			continue
-		
-		var file_path = str(storage_id) + ".tscn"
-		if not _save_directory.file_exists(file_path):
-			push_error("节点文件不存在: " + file_path)
-			continue
-		
-		var packed_scene = load(file_path)
-		if not packed_scene or not packed_scene is PackedScene:
-			push_error("无法加载场景资源: " + file_path)
-			continue
-		
-		var instance = packed_scene.instantiate()
-		if not instance or not instance is Node3D:
-			push_error("实例化的节点不是 Node3D 类型: " + file_path)
-			if instance:
-				instance.free()
-			continue
-		
-		add_child(instance)
-		
-		# 重新连接信号
-		if node_signal_map.has(storage_id):
-			var signal_name = node_signal_map[storage_id]
-			if instance.has_signal(signal_name):
-				instance.connect(signal_name, _on_node_updated.bind(instance))
+		load_node(storage_id)
+
 
 
 ## 保存节点到磁盘
@@ -253,7 +265,7 @@ func get_node_by_storage_id(storage_id: int) -> Node3D:
 		var instance_id = _storage_id_to_node_instance_id[storage_id]
 		return instance_from_id(instance_id)
 	return null
-
+	
 
 ## 查询指定区域内的节点
 func query_nodes_in_bounds(bounds: AABB) -> Array:

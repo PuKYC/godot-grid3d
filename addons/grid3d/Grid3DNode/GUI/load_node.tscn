@@ -3,6 +3,16 @@
 [sub_resource type="GDScript" id="GDScript_22ijm"]
 script/source = "@tool
 extends FileDialog
+
+var operation_node:
+	set(value):
+		if (value is Grid3DNode) or (value == null):
+			operation_node = value
+		else:
+			push_error(\"operation_node 必须为 Node3D 类型 或者为 null 类型\")
+
+func _populate_scene_tree():
+	root_subfolder = operation_node.node_save_path
 "
 
 [node name="load_node" type="FileDialog"]
@@ -18,5 +28,3 @@ folder_creation_enabled = false
 favorites_enabled = false
 layout_toggle_enabled = false
 script = SubResource("GDScript_22ijm")
-
-[connection signal="confirmed" from="." to="." method="_on_select_pressed"]
