@@ -1,0 +1,101 @@
+[gd_scene load_steps=7 format=3 uid="uid://d24tmpa1dcy5w"]
+
+[ext_resource type="PackedScene" uid="uid://blhl2jc13aoaa" path="res://addons/grid3d/Grid3DNode/GUI/select_node.tscn" id="1_q3bgq"]
+[ext_resource type="PackedScene" uid="uid://bah64tfi8uv0h" path="res://addons/grid3d/Grid3DNode/GUI/select_signal.tscn" id="2_i71u6"]
+[ext_resource type="PackedScene" uid="uid://2wea8cxc7q8e" path="res://addons/grid3d/Grid3DNode/GUI/load_node.tscn" id="3_dkfhj"]
+[ext_resource type="PackedScene" uid="uid://dffyegxjan5vt" path="res://addons/grid3d/Grid3DNode/GUI/save_node.tscn" id="4_ns7ro"]
+[ext_resource type="PackedScene" uid="uid://55f52y3m53xi" path="res://addons/grid3d/Grid3DNode/GUI/remove_node.tscn" id="5_7h3ft"]
+
+[sub_resource type="GDScript" id="GDScript_bwsu5"]
+script/source = "@tool
+extends MenuButton
+
+@onready var select_node : ConfirmationDialog = $select_node
+@onready var select_signal : ConfirmationDialog = $select_signal
+@onready var load_node: FileDialog = $load_node
+@onready var remove_node: ConfirmationDialog = $remove_node
+@onready var save_node: ConfirmationDialog = $save_node
+
+var operation_node:
+	set(value):
+		if value is Grid3DNode:
+			operation_node = value
+		elif value == null:
+			operation_node = value
+		else:
+			push_error(\"operation_node 必须为 Node3D 类型 或者为 null 类型\")
+var popup :PopupMenu
+
+func popup_centered(window:Window, ratio:float, node:Node3D):
+	window.operation_node = node
+	window._populate_scene_tree()
+	window.popup_centered_ratio(ratio)
+	window.popup_centered()
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	#theme = EditorInterface.get_editor_theme()
+	
+	popup = get_popup()
+	
+	popup.clear()
+	
+	popup.add_item(\"添加节点\",1)
+	popup.add_item(\"删除磁盘中保存的节点\",2)
+	popup.add_item(\"加载节点\",3)
+	popup.add_item(\"保存节点\",4)
+	
+	popup.connect(\"id_pressed\",pop_id)
+
+func pop_id(id :int):
+	match id:
+		1:
+			popup_centered(select_node, 0.4, operation_node)
+		2:
+			popup_centered(remove_node, 0.4, operation_node)
+		3:
+			popup_centered(load_node, 0.4, operation_node)
+		4:
+			popup_centered(save_node, 0.4, operation_node)
+
+func _getde_node(node: Node3D):
+	popup_centered(select_signal, 0.4, node)
+
+func _getde_signal(sig_name:String):
+	operation_node.register_node(select_signal.operation_node, null, sig_name)
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(delta: float) -> void:
+	pass
+"
+
+[node name="Grid3dNodeMenu" type="MenuButton"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "节点管理"
+item_count = 4
+popup/item_0/text = "添加节点"
+popup/item_0/id = 1
+popup/item_1/text = "删除节点"
+popup/item_1/id = 2
+popup/item_2/text = "加载节点"
+popup/item_2/id = 3
+popup/item_3/text = "保存节点"
+popup/item_3/id = 4
+script = SubResource("GDScript_bwsu5")
+
+[node name="select_node" parent="." instance=ExtResource("1_q3bgq")]
+
+[node name="select_signal" parent="." instance=ExtResource("2_i71u6")]
+
+[node name="load_node" parent="." instance=ExtResource("3_dkfhj")]
+visible = false
+
+[node name="save_node" parent="." instance=ExtResource("4_ns7ro")]
+
+[node name="remove_node" parent="." instance=ExtResource("5_7h3ft")]
+
+[connection signal="signal_selected" from="select_signal" to="." method="_getde_signal"]

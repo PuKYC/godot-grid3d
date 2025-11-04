@@ -1,0 +1,126 @@
+[gd_scene load_steps=2 format=3 uid="uid://blhl2jc13aoaa"]
+
+[sub_resource type="GDScript" id="GDScript_22ijm"]
+script/source = "@tool
+extends ConfirmationDialog
+
+var scene_tree: Tree
+var current_selected_node: Node
+var _unselectable_metadata_values := []
+var operation_node:
+	set(value):
+		if (value is Grid3DNode) or (value == null):
+			operation_node = value
+			_unselectable_metadata_values.clear()
+			add_unselectable_condition(value)
+		else:
+			push_error(\"operation_node 必须为 Node3D 类型 或者为 null 类型\")
+
+
+signal node_selected(node: Node3D)
+
+func _ready():
+	#theme =  EditorInterface.get_editor_theme()
+	
+	var vbox = VBoxContainer.new()
+	add_child(vbox)
+	
+	scene_tree = Tree.new()
+	scene_tree.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scene_tree.item_selected.connect(_on_tree_item_selected)
+	vbox.add_child(scene_tree)
+	
+	add_unselectable_condition(Node3D)
+
+func _populate_scene_tree():
+	scene_tree.clear()
+	
+	var root = scene_tree.create_item()
+	root.set_text(0, \"当前场景\")
+	
+	# 递归添加场景树节点
+	_add_tree_items(root, EditorInterface.get_edited_scene_root())
+	
+	update_selectable_states()
+	
+
+func _add_tree_items(parent: TreeItem, node: Node):
+	var item = scene_tree.create_item(parent)
+	item.set_icon(0, EditorInterface.get_base_control().get_theme_icon(node.get_class(), \"EditorIcons\"))
+	item.set_text(0, node.name)
+	item.set_metadata(0, node)
+	
+	for child in node.get_children():
+		_add_tree_items(item, child)
+
+func _on_tree_item_selected():
+	var selected = scene_tree.get_selected()
+	if selected:
+		current_selected_node = selected.get_metadata(0)
+
+func _on_select_pressed():
+	if current_selected_node:
+		node_selected.emit(current_selected_node)
+
+# 添加禁止选择的条件
+func add_unselectable_condition(value) -> void:
+	_unselectable_metadata_values.append(value)
+	
+# 单次遍历同时计算和应用
+func update_selectable_states() -> void:
+	var root = scene_tree.get_root()
+	if root:
+		_compute_and_apply_states(root)
+
+func _compute_and_apply_states(item: TreeItem) -> bool:
+	# 检查当前项是否满足禁用条件
+	var should_disable = _should_disable_item(item)
+	
+	# 递归处理子项并收集它们的禁用状态
+	var any_child_disabled = false
+	var child = item.get_children()
+	for tree_item in child:
+		if _compute_and_apply_states(tree_item):
+			any_child_disabled = true
+	
+	# 确定最终状态：当前项满足条件或任何子项被禁用
+	var final_disable = should_disable or any_child_disabled
+	
+	if !(item.get_metadata(0) is Node3D):
+		item.set_selectable(0, false)
+		item.set_custom_color(0, Color.GRAY)  # 视觉提示
+	else :
+		item.set_selectable(0, !final_disable)
+		
+		if final_disable:
+			item.set_custom_color(0, Color.GRAY)  # 视觉提示
+	
+	return final_disable
+
+# 检查单个项是否应该被禁用
+func _should_disable_item(item: TreeItem) -> bool:
+	var metadata = item.get_metadata(0)
+	if not metadata:
+		return false
+	
+	# 检查值匹配
+	for value in _unselectable_metadata_values:
+		if _metadata_contains_value(metadata, value):
+			return true
+	
+	return false
+
+func _metadata_contains_value(metadata, value) -> bool:
+	if typeof(metadata) == typeof(value) and metadata == value:
+		return true
+	elif metadata is Dictionary:
+		return metadata.values().has(value)
+	elif metadata is Array:
+		return metadata.has(value)
+	return false
+"
+
+[node name="select_node" type="ConfirmationDialog"]
+script = SubResource("GDScript_22ijm")
+
+[connection signal="confirmed" from="." to="." method="_on_select_pressed"]

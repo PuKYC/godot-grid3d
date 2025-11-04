@@ -1,0 +1,21 @@
+[gd_scene load_steps=6 format=3 uid="uid://djpmpgbskvoyg"]
+
+[ext_resource type="Script" uid="uid://cb51yy313n4qv" path="res://addons/grid3d/Grid3DNode/Grid3D_Node.gd" id="1_a202f"]
+[ext_resource type="Script" uid="uid://dj7uw07nm6sc2" path="res://addons/grid3d/Grid_Partition3D.gd" id="2_a0tk4"]
+[ext_resource type="Script" uid="uid://b0626h2w7wif4" path="res://addons/grid3d/ID_manager.gd" id="3_r3fl7"]
+
+[sub_resource type="Resource" id="Resource_r3fl7"]
+script = ExtResource("2_a0tk4")
+metadata/_custom_type_script = "uid://dj7uw07nm6sc2"
+
+[sub_resource type="Resource" id="Resource_jka67"]
+script = ExtResource("3_r3fl7")
+available_ids = PackedInt64Array()
+
+[node name="Node3D" type="Node3D"]
+
+[node name="Grid3DNode" type="Node3D" parent="."]
+script = ExtResource("1_a202f")
+grid_partition = SubResource("Resource_r3fl7")
+id_manager = SubResource("Resource_jka67")
+metadata/_custom_type_script = "uid://cb51yy313n4qv"
